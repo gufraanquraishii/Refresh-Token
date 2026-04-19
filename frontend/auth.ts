@@ -3,21 +3,10 @@ import Credentials from "next-auth/providers/credentials";
 import type { JWT } from "next-auth/jwt";
 import { decodeJwtExpiryMs, decodeJwtPayload } from "@/lib/jwt-decode";
 
-const authApiUrl = process.env.AUTH_API_URL ?? "http://localhost:4000";
+const authApiUrl = "http://localhost:4000";
 
-/** Set AUTH_DEBUG=false in .env.local to turn off auth logs. */
-const authDebug = process.env.AUTH_DEBUG !== "false";
-
-/** Noisy: log every "access token still valid". Set AUTH_DEBUG_VERBOSE=true to enable. */
-const authDebugVerbose =
-  authDebug && process.env.AUTH_DEBUG_VERBOSE === "true";
-
-function logAuth(...args: unknown[]) {
-  if (authDebug) console.log("[next-auth]", ...args);
-}
 
 async function refreshAccessToken(token: JWT): Promise<JWT> {
-  logAuth("↻ REFRESHING access token — POST /auth/refresh");
   try {
     const res = await fetch(`${authApiUrl}/auth/refresh`, {
       method: "POST",
@@ -28,25 +17,10 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
     const data = (await res.json()) as { accessToken?: string };
 
     if (!res.ok || !data.accessToken) {
-      logAuth(
-        "refreshAccessToken: failed",
-        "status=",
-        res.status,
-        "body=",
-        data
-      );
       throw new Error("Refresh failed");
     }
 
     const newExp = decodeJwtExpiryMs(data.accessToken);
-    logAuth(
-      "refreshAccessToken: OK — new access token, expiresAt(ms)=",
-      newExp,
-      "in ~",
-      Math.round((newExp - Date.now()) / 1000),
-      "s"
-    );
-
     return {
       ...token,
       accessToken: data.accessToken,
@@ -54,9 +28,9 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       error: undefined,
     };
   } catch (e) {
-    logAuth("refreshAccessToken: ERROR", e);
+    console.log("refreshAccessToken: ERROR", e);
     return { ...token, error: "RefreshAccessTokenError" };
-  }
+  } 
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -68,9 +42,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        console.log("authorize: callback running", 
+          "this is credentials:", credentials);
         if (!credentials?.email || !credentials?.password) return null;
 
-        logAuth("authorize: POST /auth/login for", credentials.email);
 
         const res = await fetch(`${authApiUrl}/auth/login`, {
           method: "POST",
@@ -80,14 +55,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             password: credentials.password,
           }),
         });
+        console.log("authorize: callback running", 
+          "this is res:", res);
 
         const data = (await res.json()) as {
           accessToken?: string;
           refreshToken?: string;
         };
 
-        if (!res.ok || !data.accessToken || !data.refreshToken) {
-          logAuth("authorize: login failed", "status=", res.status, data);
+        if (!res.ok || !data.accessToken || !data.refreshToken) { 
           return null;
         }
 
@@ -96,10 +72,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email =
           typeof claims.email === "string" ? claims.email : undefined;
 
-        logAuth(
-          "authorize: OK — tokens received, access exp(ms)=",
-          decodeJwtExpiryMs(data.accessToken)
-        );
 
         return {
           id,
@@ -113,15 +85,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   callbacks: {
     async jwt({ token, user }) {
+      console.log("jwt: callback running", 
+        "this is token:", token,
+        "this is user:", user);
       if (user && "accessToken" in user && user.accessToken) {
         const expMs = decodeJwtExpiryMs(user.accessToken as string);
-        logAuth(
-          "jwt: initial sign-in — accessTokenExpires(ms)=",
-          expMs,
-          "(~",
-          Math.round((expMs - Date.now()) / 1000),
-          "s from now)"
-        );
+
         return {
           ...token,
           accessToken: user.accessToken,
@@ -139,28 +108,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           : null;
 
       if (exp !== null && now < exp) {
-        if (authDebugVerbose) {
-          logAuth(
-            "jwt: access token still valid — now=",
-            now,
-            "expires=",
-            exp,
-            "remaining(s)=",
-            Math.round((exp - now) / 1000)
-          );
-        }
         return token;
       }
 
-      logAuth(
-        "jwt: access token expired or missing expiry — refreshing. now=",
-        now,
-        "exp=",
-        exp
-      );
-      return refreshAccessToken(token);
+      const refreshedToken = await refreshAccessToken(token);
+      console.log("jwt: callback returning: ACCESS TOKEN EXPIRED", 
+        "this is new refreshed token:", refreshedToken);
+      return refreshedToken;
     },
     async session({ session, token }) {
+      console.log("session: callback running", 
+        "this is session:", session,
+        "this is token:", token);
       if (session.user) {
         if (token.sub) session.user.id = token.sub;
         if (token.email) session.user.email = token.email as string;
@@ -177,9 +136,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       } else {
         session.accessTokenSecondsRemaining = undefined;
       }
-      if (authDebug && session.error) {
-        logAuth("session callback — Refresh/session error:", session.error);
-      }
+      console.log("session: callback returning", 
+        "this is session:", session);
       return session;
     },
   },
