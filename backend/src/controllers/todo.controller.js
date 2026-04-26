@@ -4,18 +4,73 @@ const Todo = require("../models/Todo");
 // @desc    Get all todos for logged-in user
 // @route   GET /todos
 // @access  Private
+// exports.getAll = async (req, res) => {
+//     try {
+//         const todos = await Todo.find({ user: req.user.id })
+//             .sort({ createdAt: -1 }) // Newest first
+//             .lean();
+
+//         res.json(todos);
+//     } catch (err) {
+//         console.error("[todo/getAll] error:", err);
+//         res.status(500).json({ message: "Internal server error" });
+//     }
+// };
+
+
+// controllers/todo.controller.js - UPDATE getAll
+
 exports.getAll = async (req, res) => {
     try {
-        const todos = await Todo.find({ user: req.user.id })
-            .sort({ createdAt: -1 }) // Newest first
-            .lean();
+        // Get pagination params from query string
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 5;
+        const skip = (page - 1) * limit;
 
-        res.json(todos);
+        // Get search/filter params
+        const search = req.query.search || '';
+        const status = req.query.status; // 'completed' | 'pending' | undefined
+
+        // Build filter
+        const filter = { user: req.user.id };
+
+        if (search) {
+            filter.title = { $regex: search, $options: 'i' }; // Case-insensitive search
+        }
+
+        if (status === 'completed') {
+            filter.completed = true;
+        } else if (status === 'pending') {
+            filter.completed = false;
+        }
+
+        // Run both queries in parallel for speed
+        const [todos, total] = await Promise.all([
+            Todo.find(filter)
+                .sort({ createdAt: -1 })  // Newest first
+                .skip(skip)               // Skip previous pages
+                .limit(limit)             // Only return 5
+                .lean(),
+
+            Todo.countDocuments(filter) // Total count for pagination
+        ]);
+
+        res.json({
+            todos,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+                hasMore: page < Math.ceil(total / limit),
+            },
+        });
     } catch (err) {
         console.error("[todo/getAll] error:", err);
         res.status(500).json({ message: "Internal server error" });
     }
 };
+
 
 // @desc    Get single todo
 // @route   GET /todos/:id

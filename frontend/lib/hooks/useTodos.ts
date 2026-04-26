@@ -1,18 +1,23 @@
 // hooks/useTodos.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { todoApi } from '../../app/api/todoApi';
-import { Todo } from '../types/todo';
+import { Todo, type PaginatedResponse, type TodoQueryParams } from '../types/todo';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // QUERIES (Reading Data)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 // Get all todos
-export const useTodos = () => {
+// 🆕 Accept pagination params
+export const useTodos = (params: TodoQueryParams = {}) => {
+  const { page = 1, limit = 5, search = '', status } = params;
+  
   return useQuery({
-    queryKey: ['todos'],
-    queryFn: todoApi.getAll, // 👈 TanStack calls axios here
-    staleTime: 30 * 1000,    // Fresh for 30 seconds
+    // Include ALL params in queryKey (cache per page/search/status)
+    queryKey: ['todos', { page, limit, search, status }],
+    queryFn: () => todoApi.getAll(params),
+    // Keep previous data while loading new page (smooth transition)
+    placeholderData: (previousData) => previousData,
   });
 };
 

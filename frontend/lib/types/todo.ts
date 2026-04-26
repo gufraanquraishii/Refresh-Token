@@ -1,18 +1,29 @@
-// types/todo.ts
+// types/todo.ts - UPDATE
 export interface Todo {
-    userId: number;
-    id: number;
-    title: string;
-    completed: boolean;
-    titleUpper: string;
-    description: string;
-    statusLabel: string;
-    _id: string;
-  }
-
-
-export interface TodoFormData {
+  _id: string;
   title: string;
-  description: string;
+  description?: string;
   completed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 🆕 Pagination response type
+export interface PaginatedResponse {
+  todos: Todo[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
+}
+
+// 🆕 Query params type
+export interface TodoQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: 'completed' | 'pending';
 }

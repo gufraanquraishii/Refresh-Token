@@ -1,9 +1,11 @@
 // api/todoApi.ts
 import axios from 'axios';
 import { getSession } from 'next-auth/react';
+import { Todo, PaginatedResponse, TodoQueryParams } from '../../lib/types/todo';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 const TODOS_URL = `${API_URL}/todos`;
+
 
 // Helper: Get token
 const getAuthHeader = async () => {
@@ -14,10 +16,18 @@ const getAuthHeader = async () => {
 
 // Pure axios functions - NO TanStack here
 export const todoApi = {
-  getAll: async () => {
-    const { data } = await axios.get(TODOS_URL, { headers: await getAuthHeader() });
+  // 🆕 Get paginated todos
+  getAll: async (params: TodoQueryParams = {}): Promise<PaginatedResponse> => {
+    const { page = 1, limit = 5, search = '', status } = params;
+    
+    const { data } = await axios.get(TODOS_URL, {
+      headers: await getAuthHeader(),
+      params: { page, limit, search, status }, // Query string params
+    });
+    
+
     return data;
-  },
+  },  
   
   getById: async (id: string) => {
     const { data } = await axios.get(`${TODOS_URL}/${id}`, { headers: await getAuthHeader() });
