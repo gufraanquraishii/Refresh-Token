@@ -32,6 +32,19 @@ export function AppNav() {
         >
           Profile
         </Link>
+        <span className="text-zinc-300 dark:text-zinc-600">|</span>
+        <Link
+          href="/aliya"
+          className="text-zinc-700 hover:underline dark:text-zinc-300"
+        >
+          Aliya
+        </Link>
+        <span className="text-zinc-300 dark:text-zinc-600">|</span> <Link
+          href="/create-todo"
+          className="text-zinc-700 hover:underline dark:text-zinc-300"
+        >
+          CreateTodo
+        </Link>
         <span className="ml-auto flex items-center gap-2">
           <LogoutButton />
         </span>

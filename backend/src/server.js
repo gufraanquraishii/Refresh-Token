@@ -13,6 +13,8 @@ const cors = require("cors");
 const { connectDB } = require("./config/database");
 const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
+const todoRoutes = require("./routes/todo.routes");
+
 
 const app = express();
 
@@ -21,6 +23,7 @@ app.use(express.json());
 
 app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
+app.use("/todos", todoRoutes); // 🆕 NEW - CRUD endpoint
 
 // Central error handler (after routes)
 // eslint-disable-next-line no-unused-vars

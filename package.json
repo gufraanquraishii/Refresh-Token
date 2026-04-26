@@ -1,5 +1,11 @@
 {
   "name": "practice",
   "private": true,
-  "packageManager": "pnpm@10.17.1"
+  "packageManager": "pnpm@10.17.1",
+  "scripts": {
+    "dev": "concurrently -n \"frontend,backend\" -c \"cyan,magenta\" \"pnpm --filter frontend dev\" \"pnpm --filter backend dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
 }
